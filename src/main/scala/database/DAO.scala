@@ -15,18 +15,21 @@ object DAO {
     get(entity.key).flatMap { innerEntity =>
       val q = for(entity <- Tables.entities.filter(_.key === innerEntity.key)) yield entity.value
       val p = q.update(entity.value)
-      DB.db.run(p.transactionally)
+      DB.db.get.run(p.transactionally)
     }.recoverWith { case throwable =>
       val q = Tables.entities += entity
-      DB.db.run(q.transactionally)
+      DB.db.get.run(q.transactionally)
     }
   }
   def get(key: String): Future[Entity] = {
     val q = for(entity <- Tables.entities.filter(_.key === key)) yield entity
-    DB.db.run(q.result).map(_ head)
+    DB.db.get.run(q.result).map(_ head)
   }
   def evict(key: String): Future[Int] = {
     val q = for(entity <- Tables.entities.filter(_.key === key)) yield entity
-    DB.db.run(q.delete)
+    DB.db.get.run(q.delete)
+  }
+  def init: Future[Unit] = {
+    DB.db.get.run(DBIO.seq(Tables.entities.schema.create))
   }
 }
